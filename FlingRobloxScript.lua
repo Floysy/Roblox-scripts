@@ -1,492 +1,541 @@
 --[[
-    KILASIK's Multi-Target Fling Exploit
-    Based on the working fling mechanism from zqyDSUWX
-    Features:
-    - Select multiple targets
-    - Continuous flinging until stopped
-    - Preserves player mobility (no teleporting to targets)
-    - Flings targets very far
-    - Compatible with JJSploit, Synapse X, etc.
+  PHANTOM // AUTH SYSTEM
+  Run with an executor (Synapse, Fluxus, etc.) — requires setclipboard.
 ]]
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Player = Players.LocalPlayer
--- GUI Setup
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KilasikFlingGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
--- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
--- Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -30, 1, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "KILASIK'S MULTI-FLING"
-Title.TextColor3 = Color3.fromRGB(255, 80, 80)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-Title.Parent = TitleBar
--- Close Button
-local CloseButton = Instance.new("TextButton")
-CloseButton.Position = UDim2.new(1, -30, 0, 0)
-CloseButton.Size = UDim2.new(0, 30, 0, 30)
-CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-CloseButton.BorderSizePixel = 0
-CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.TextSize = 18
-CloseButton.Parent = TitleBar
--- Status Label
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Position = UDim2.new(0, 10, 0, 40)
-StatusLabel.Size = UDim2.new(1, -20, 0, 25)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Select targets to fling"
-StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusLabel.Font = Enum.Font.SourceSans
-StatusLabel.TextSize = 16
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.Parent = MainFrame
--- Player Selection Frame
-local SelectionFrame = Instance.new("Frame")
-SelectionFrame.Position = UDim2.new(0, 10, 0, 70)
-SelectionFrame.Size = UDim2.new(1, -20, 0, 200)
-SelectionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SelectionFrame.BorderSizePixel = 0
-SelectionFrame.Parent = MainFrame
--- Player List ScrollFrame
-local PlayerScrollFrame = Instance.new("ScrollingFrame")
-PlayerScrollFrame.Position = UDim2.new(0, 5, 0, 5)
-PlayerScrollFrame.Size = UDim2.new(1, -10, 1, -10)
-PlayerScrollFrame.BackgroundTransparency = 1
-PlayerScrollFrame.BorderSizePixel = 0
-PlayerScrollFrame.ScrollBarThickness = 6
-PlayerScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-PlayerScrollFrame.Parent = SelectionFrame
--- Start Fling Button
-local StartButton = Instance.new("TextButton")
-StartButton.Position = UDim2.new(0, 10, 0, 280)
-StartButton.Size = UDim2.new(0.5, -15, 0, 40)
-StartButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-StartButton.BorderSizePixel = 0
-StartButton.Text = "START FLING"
-StartButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-StartButton.Font = Enum.Font.SourceSansBold
-StartButton.TextSize = 18
-StartButton.Parent = MainFrame
--- Stop Fling Button
-local StopButton = Instance.new("TextButton")
-StopButton.Position = UDim2.new(0.5, 5, 0, 280)
-StopButton.Size = UDim2.new(0.5, -15, 0, 40)
-StopButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-StopButton.BorderSizePixel = 0
-StopButton.Text = "STOP FLING"
-StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-StopButton.Font = Enum.Font.SourceSansBold
-StopButton.TextSize = 18
-StopButton.Parent = MainFrame
--- Select/Deselect Buttons
-local SelectAllButton = Instance.new("TextButton")
-SelectAllButton.Position = UDim2.new(0, 10, 0, 330)
-SelectAllButton.Size = UDim2.new(0.5, -15, 0, 30)
-SelectAllButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SelectAllButton.BorderSizePixel = 0
-SelectAllButton.Text = "SELECT ALL"
-SelectAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SelectAllButton.Font = Enum.Font.SourceSans
-SelectAllButton.TextSize = 14
-SelectAllButton.Parent = MainFrame
-local DeselectAllButton = Instance.new("TextButton")
-DeselectAllButton.Position = UDim2.new(0.5, 5, 0, 330)
-DeselectAllButton.Size = UDim2.new(0.5, -15, 0, 30)
-DeselectAllButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-DeselectAllButton.BorderSizePixel = 0
-DeselectAllButton.Text = "DESELECT ALL"
-DeselectAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DeselectAllButton.Font = Enum.Font.SourceSans
-DeselectAllButton.TextSize = 14
-DeselectAllButton.Parent = MainFrame
--- Variables
-local SelectedTargets = {}
-local PlayerCheckboxes = {}
-local FlingActive = false
-local FlingConnection = nil
-getgenv().OldPos = nil
-getgenv().FPDH = workspace.FallenPartsDestroyHeight
--- Function to update player list
-local function RefreshPlayerList()
-    -- Clear existing player entries
-    for _, child in pairs(PlayerScrollFrame:GetChildren()) do
-        child:Destroy()
-    end
-    PlayerCheckboxes = {}
-    
-    -- Get players and sort them
-    local PlayerList = Players:GetPlayers()
-    table.sort(PlayerList, function(a, b) return a.Name:lower() < b.Name:lower() end)
-    
-    -- Create entries for each player
-    local yPosition = 5
-    for _, player in ipairs(PlayerList) do
-        if player ~= Player then -- Don't include yourself
-            -- Create player entry frame
-            local PlayerEntry = Instance.new("Frame")
-            PlayerEntry.Size = UDim2.new(1, -10, 0, 30)
-            PlayerEntry.Position = UDim2.new(0, 5, 0, yPosition)
-            PlayerEntry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            PlayerEntry.BorderSizePixel = 0
-            PlayerEntry.Parent = PlayerScrollFrame
-            
-            -- Create checkbox
-            local Checkbox = Instance.new("TextButton")
-            Checkbox.Size = UDim2.new(0, 24, 0, 24)
-            Checkbox.Position = UDim2.new(0, 3, 0.5, -12)
-            Checkbox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-            Checkbox.BorderSizePixel = 0
-            Checkbox.Text = ""
-            Checkbox.Parent = PlayerEntry
-            
-            -- Checkmark (initially invisible)
-            local Checkmark = Instance.new("TextLabel")
-            Checkmark.Size = UDim2.new(1, 0, 1, 0)
-            Checkmark.BackgroundTransparency = 1
-            Checkmark.Text = "✓"
-            Checkmark.TextColor3 = Color3.fromRGB(0, 255, 0)
-            Checkmark.TextSize = 18
-            Checkmark.Font = Enum.Font.SourceSansBold
-            Checkmark.Visible = SelectedTargets[player.Name] ~= nil
-            Checkmark.Parent = Checkbox
-            
-            -- Player name label
-            local NameLabel = Instance.new("TextLabel")
-            NameLabel.Size = UDim2.new(1, -35, 1, 0)
-            NameLabel.Position = UDim2.new(0, 30, 0, 0)
-            NameLabel.BackgroundTransparency = 1
-            NameLabel.Text = player.Name
-            NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            NameLabel.TextSize = 16
-            NameLabel.Font = Enum.Font.SourceSans
-            NameLabel.TextXAlignment = Enum.TextXAlignment.Left
-            NameLabel.Parent = PlayerEntry
-            
-            -- Make entire entry clickable
-            local ClickArea = Instance.new("TextButton")
-            ClickArea.Size = UDim2.new(1, 0, 1, 0)
-            ClickArea.BackgroundTransparency = 1
-            ClickArea.Text = ""
-            ClickArea.ZIndex = 2
-            ClickArea.Parent = PlayerEntry
-            
-            -- Selection toggle on click
-            ClickArea.MouseButton1Click:Connect(function()
-                if SelectedTargets[player.Name] then
-                    SelectedTargets[player.Name] = nil
-                    Checkmark.Visible = false
-                else
-                    SelectedTargets[player.Name] = player
-                    Checkmark.Visible = true
-                end
-                
-                UpdateStatus()
-            end)
-            
-            -- Store reference to this player's UI
-            PlayerCheckboxes[player.Name] = {
-                Entry = PlayerEntry,
-                Checkmark = Checkmark
-            }
-            
-            yPosition = yPosition + 35
-        end
-    end
-    
-    -- Update scrollframe canvas size
-    PlayerScrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition + 5)
+
+local LINK = "https://1drv.ms/f/c/483e7ba0d40a851b/IgCdkSgtayc4TaLMU-eF9HmPAarKTAf6cAF0GXtXK2kpNpI?e=IAkqZG"
+
+local guiParent = game:GetService("CoreGui")
+
+-- Colores
+local C = {
+	bg = Color3.fromRGB(18, 18, 20),
+	panel = Color3.fromRGB(28, 28, 32),
+	panelLight = Color3.fromRGB(34, 34, 38),
+	border = Color3.fromRGB(180, 35, 45),
+	red = Color3.fromRGB(200, 45, 55),
+	redDark = Color3.fromRGB(120, 28, 35),
+	white = Color3.fromRGB(235, 235, 240),
+	dim = Color3.fromRGB(120, 120, 130),
+	yellow = Color3.fromRGB(220, 180, 60),
+	green = Color3.fromRGB(70, 200, 100),
+	blue = Color3.fromRGB(80, 140, 220),
+	inputRed = Color3.fromRGB(220, 60, 70),
+	orange = Color3.fromRGB(220, 140, 70),
+}
+
+local function copyToClipboard(text)
+	if setclipboard then
+		setclipboard(text)
+		return true
+	end
+	if toclipboard then
+		toclipboard(text)
+		return true
+	end
+	if syn and syn.write_clipboard then
+		syn.write_clipboard(text)
+		return true
+	end
+	if clipboard and clipboard.set then
+		clipboard.set(text)
+		return true
+	end
+	return false
 end
--- Count selected targets
-local function CountSelectedTargets()
-    local count = 0
-    for _ in pairs(SelectedTargets) do
-        count = count + 1
-    end
-    return count
+
+local function corner(inst, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r or 6)
+	c.Parent = inst
+	return c
 end
--- Update status display
-local function UpdateStatus()
-    local count = CountSelectedTargets()
-    if FlingActive then
-        StatusLabel.Text = "Flinging " .. count .. " target(s)"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-    else
-        StatusLabel.Text = count .. " target(s) selected" 
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end
+
+local function stroke(inst, color, thickness)
+	local s = Instance.new("UIStroke")
+	s.Color = color or C.border
+	s.Thickness = thickness or 1
+	s.Parent = inst
+	return s
 end
--- Function to select/deselect all players
-local function ToggleAllPlayers(select)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Player then
-            local checkboxData = PlayerCheckboxes[player.Name]
-            if checkboxData then
-                if select then
-                    SelectedTargets[player.Name] = player
-                    checkboxData.Checkmark.Visible = true
-                else
-                    SelectedTargets[player.Name] = nil
-                    checkboxData.Checkmark.Visible = false
-                end
-            end
-        end
-    end
-    
-    UpdateStatus()
+
+local function label(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.Code
+	l.TextColor3 = C.white
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextYAlignment = Enum.TextYAlignment.Center
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	l.Parent = parent
+	return l
 end
--- Show notification
-local function Message(Title, Text, Time)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = Title,
-        Text = Text,
-        Duration = Time or 5
-    })
+
+local function button(parent, props)
+	local b = Instance.new("TextButton")
+	b.AutoButtonColor = true
+	b.Font = Enum.Font.Code
+	b.TextColor3 = C.white
+	b.Text = ""
+	for k, v in pairs(props) do
+		b[k] = v
+	end
+	b.Parent = parent
+	return b
 end
--- The fling function from zqyDSUWX
-local function SkidFling(TargetPlayer)
-    local Character = Player.Character
-    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-    local RootPart = Humanoid and Humanoid.RootPart
-    local TCharacter = TargetPlayer.Character
-    if not TCharacter then return end
-    
-    local THumanoid
-    local TRootPart
-    local THead
-    local Accessory
-    local Handle
-    if TCharacter:FindFirstChildOfClass("Humanoid") then
-        THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
-    end
-    if THumanoid and THumanoid.RootPart then
-        TRootPart = THumanoid.RootPart
-    end
-    if TCharacter:FindFirstChild("Head") then
-        THead = TCharacter.Head
-    end
-    if TCharacter:FindFirstChildOfClass("Accessory") then
-        Accessory = TCharacter:FindFirstChildOfClass("Accessory")
-    end
-    if Accessory and Accessory:FindFirstChild("Handle") then
-        Handle = Accessory.Handle
-    end
-    if Character and Humanoid and RootPart then
-        if RootPart.Velocity.Magnitude < 50 then
-            getgenv().OldPos = RootPart.CFrame
-        end
-        
-        if THumanoid and THumanoid.Sit then
-            return Message("Error", TargetPlayer.Name .. " is sitting", 2)
-        end
-        
-        if THead then
-            workspace.CurrentCamera.CameraSubject = THead
-        elseif Handle then
-            workspace.CurrentCamera.CameraSubject = Handle
-        elseif THumanoid and TRootPart then
-            workspace.CurrentCamera.CameraSubject = THumanoid
-        end
-        
-        if not TCharacter:FindFirstChildWhichIsA("BasePart") then
-            return
-        end
-        
-        local FPos = function(BasePart, Pos, Ang)
-            RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
-            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
-            RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
-            RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-        end
-        
-        local SFBasePart = function(BasePart)
-            local TimeToWait = 2
-            local Time = tick()
-            local Angle = 0
-            repeat
-                if RootPart and THumanoid then
-                    if BasePart.Velocity.Magnitude < 50 then
-                        Angle = Angle + 100
-                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0 ,0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle), 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0 ,0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle), 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle),0 ,0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle), 0, 0))
-                        task.wait()
-                    else
-                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90), 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, -THumanoid.WalkSpeed), CFrame.Angles(0, 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90), 0, 0))
-                        task.wait()
-                        
-                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90), 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0, 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90), 0, 0))
-                        task.wait()
-                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0, 0, 0))
-                        task.wait()
-                    end
-                end
-            until Time + TimeToWait < tick() or not FlingActive
-        end
-        
-        workspace.FallenPartsDestroyHeight = 0/0
-        
-        local BV = Instance.new("BodyVelocity")
-        BV.Parent = RootPart
-        BV.Velocity = Vector3.new(0, 0, 0)
-        BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        
-        if TRootPart then
-            SFBasePart(TRootPart)
-        elseif THead then
-            SFBasePart(THead)
-        elseif Handle then
-            SFBasePart(Handle)
-        else
-            return Message("Error", TargetPlayer.Name .. " has no valid parts", 2)
-        end
-        
-        BV:Destroy()
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        workspace.CurrentCamera.CameraSubject = Humanoid
-        
-        -- Reset character position
-        if getgenv().OldPos then
-            repeat
-                RootPart.CFrame = getgenv().OldPos * CFrame.new(0, .5, 0)
-                Character:SetPrimaryPartCFrame(getgenv().OldPos * CFrame.new(0, .5, 0))
-                Humanoid:ChangeState("GettingUp")
-                for _, part in pairs(Character:GetChildren()) do
-                    if part:IsA("BasePart") then
-                        part.Velocity, part.RotVelocity = Vector3.new(), Vector3.new()
-                    end
-                end
-                task.wait()
-            until (RootPart.Position - getgenv().OldPos.p).Magnitude < 25
-            workspace.FallenPartsDestroyHeight = getgenv().FPDH
-        end
-    else
-        return Message("Error", "Your character is not ready", 2)
-    end
+
+-- Eliminar GUI anterior si existe
+local old = guiParent:FindFirstChild("PhantomAuth")
+if old then
+	old:Destroy()
 end
--- Start flinging selected targets
-local function StartFling()
-    if FlingActive then return end
-    
-    local count = CountSelectedTargets()
-    if count == 0 then
-        StatusLabel.Text = "No targets selected!"
-        wait(1)
-        StatusLabel.Text = "Select targets to fling"
-        return
-    end
-    
-    FlingActive = true
-    UpdateStatus()
-    Message("Started", "Flinging " .. count .. " targets", 2)
-    
-    -- Start flinger in separate thread
-    spawn(function()
-        while FlingActive do
-            local validTargets = {}
-            
-            -- Process all targets first to determine which are valid
-            for name, player in pairs(SelectedTargets) do
-                if player and player.Parent then
-                    validTargets[name] = player
-                else
-                    -- Remove players who left
-                    SelectedTargets[name] = nil
-                    local checkbox = PlayerCheckboxes[name]
-                    if checkbox then
-                        checkbox.Checkmark.Visible = false
-                    end
-                end
-            end
-            
-            -- Then attempt to fling each valid target
-            for _, player in pairs(validTargets) do
-                if FlingActive then
-                    SkidFling(player)
-                    -- Brief wait between targets to allow movement to reset
-                    wait(0.1)
-                else
-                    break
-                end
-            end
-            
-            -- Update status periodically
-            UpdateStatus()
-            
-            -- Wait a moment before starting next fling cycle
-            wait(0.5)
-        end
-    end)
-end
--- Stop flinging
-local function StopFling()
-    if not FlingActive then return end
-    
-    FlingActive = false
-    
-    UpdateStatus()
-    Message("Stopped", "Fling has been stopped", 2)
-end
--- Set up button connections
-StartButton.MouseButton1Click:Connect(StartFling)
-StopButton.MouseButton1Click:Connect(StopFling)
-SelectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(true) end)
-DeselectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(false) end)
-CloseButton.MouseButton1Click:Connect(function()
-    StopFling()
-    ScreenGui:Destroy()
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "PhantomAuth"
+screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = guiParent
+
+local root = Instance.new("Frame")
+root.Name = "Root"
+root.AnchorPoint = Vector2.new(0.5, 0.5)
+root.Position = UDim2.new(0.5, 0, 0.5, 0)
+root.Size = UDim2.new(0, 420, 0, 520)
+root.BackgroundColor3 = C.bg
+root.BackgroundTransparency = 0.05
+root.BorderSizePixel = 0
+root.Parent = screen
+corner(root, 8)
+stroke(root, C.border, 1.5)
+
+-- Header compartido
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 44)
+header.BackgroundTransparency = 1
+header.Parent = root
+
+label(header, {
+	Size = UDim2.new(1, -100, 1, 0),
+	Position = UDim2.new(0, 14, 0, 0),
+	Text = "◆  •  PHANTOM // AUTH SYSTEM",
+	TextSize = 13,
+})
+
+local classified = button(header, {
+	Size = UDim2.new(0, 88, 0, 22),
+	Position = UDim2.new(1, -108, 0.5, -11),
+	BackgroundColor3 = C.redDark,
+	Text = "CLASSIFIED",
+	TextSize = 11,
+})
+corner(classified, 4)
+
+local closeBtn = button(header, {
+	Size = UDim2.new(0, 18, 0, 18),
+	Position = UDim2.new(1, -26, 0.5, -9),
+	BackgroundColor3 = C.red,
+	Text = "",
+})
+corner(closeBtn, 3)
+closeBtn.MouseButton1Click:Connect(function()
+	screen:Destroy()
 end)
--- Handle player joining/leaving
-Players.PlayerAdded:Connect(RefreshPlayerList)
-Players.PlayerRemoving:Connect(function(player)
-    if SelectedTargets[player.Name] then
-        SelectedTargets[player.Name] = nil
-    end
-    RefreshPlayerList()
-    UpdateStatus()
+
+local headerLine = Instance.new("Frame")
+headerLine.Size = UDim2.new(1, -24, 0, 1)
+headerLine.Position = UDim2.new(0, 12, 0, 44)
+headerLine.BackgroundColor3 = C.border
+headerLine.BorderSizePixel = 0
+headerLine.Parent = root
+
+-- Pantallas
+local authScreen = Instance.new("Frame")
+authScreen.Name = "AuthScreen"
+authScreen.Size = UDim2.new(1, 0, 1, -44)
+authScreen.Position = UDim2.new(0, 0, 0, 44)
+authScreen.BackgroundTransparency = 1
+authScreen.Parent = root
+
+local briefScreen = Instance.new("Frame")
+briefScreen.Name = "BriefScreen"
+briefScreen.Size = UDim2.new(1, 0, 1, -44)
+briefScreen.Position = UDim2.new(0, 0, 0, 44)
+briefScreen.BackgroundTransparency = 1
+briefScreen.Visible = false
+briefScreen.Parent = root
+
+local function showAuth()
+	authScreen.Visible = true
+	briefScreen.Visible = false
+end
+
+local function showBrief()
+	authScreen.Visible = false
+	briefScreen.Visible = true
+end
+
+-- ========== PANTALLA AUTH ==========
+local banner = Instance.new("Frame")
+banner.Size = UDim2.new(1, -24, 0, 64)
+banner.Position = UDim2.new(0, 12, 0, 10)
+banner.BackgroundColor3 = C.panel
+banner.BorderSizePixel = 0
+banner.Parent = authScreen
+corner(banner, 6)
+
+label(banner, {
+	Size = UDim2.new(1, -16, 0, 22),
+	Position = UDim2.new(0, 12, 0, 12),
+	Text = "🛡  PHANTOM DEFENSE SYSTEM",
+	TextSize = 15,
+	Font = Enum.Font.GothamBold,
+})
+
+label(banner, {
+	Size = UDim2.new(1, -16, 0, 18),
+	Position = UDim2.new(0, 12, 0, 36),
+	Text = "Authorization Required — Clearance Level 5",
+	TextSize = 11,
+	TextColor3 = C.dim,
+})
+
+local statsRow = Instance.new("Frame")
+statsRow.Size = UDim2.new(1, -24, 0, 48)
+statsRow.Position = UDim2.new(0, 12, 0, 82)
+statsRow.BackgroundTransparency = 1
+statsRow.Parent = authScreen
+
+local statData = {
+	{ title = "THREAT LEVEL", value = "ELEVATED", color = C.yellow },
+	{ title = "ENCRYPTION", value = "AES-256", color = C.green },
+	{ title = "SESSION", value = string.format("%06X", math.random(0, 0xFFFFFF)), color = C.dim },
+}
+
+for i, s in ipairs(statData) do
+	local col = Instance.new("Frame")
+	col.Size = UDim2.new(1 / 3, -4, 1, 0)
+	col.Position = UDim2.new((i - 1) / 3, (i - 1) * 2, 0, 0)
+	col.BackgroundTransparency = 1
+	col.Parent = statsRow
+
+	label(col, {
+		Size = UDim2.new(1, 0, 0, 14),
+		Text = s.title,
+		TextSize = 9,
+		TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+
+	label(col, {
+		Size = UDim2.new(1, 0, 0, 20),
+		Position = UDim2.new(0, 0, 0, 16),
+		Text = s.value,
+		TextSize = 12,
+		TextColor3 = s.color,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+end
+
+local KEY_PLACEHOLDER = "KEY_XXXX-XXXX-XXXX-XXXX"
+
+label(authScreen, {
+	Size = UDim2.new(1, 0, 0, 18),
+	Position = UDim2.new(0, 0, 0, 142),
+	Text = "— ENTER AUTHORIZATION KEY —",
+	TextSize = 11,
+	TextColor3 = C.dim,
+	TextXAlignment = Enum.TextXAlignment.Center,
+})
+
+local keyField = Instance.new("Frame")
+keyField.Size = UDim2.new(1, -24, 0, 36)
+keyField.Position = UDim2.new(0, 12, 0, 166)
+keyField.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+keyField.BorderSizePixel = 0
+keyField.Parent = authScreen
+corner(keyField, 4)
+stroke(keyField, Color3.fromRGB(45, 45, 52), 1)
+
+label(keyField, {
+	Size = UDim2.new(0, 28, 1, 0),
+	Position = UDim2.new(0, 8, 0, 0),
+	Text = ">>",
+	TextSize = 14,
+	TextColor3 = C.green,
+	TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+local keyBox = Instance.new("TextBox")
+keyBox.Size = UDim2.new(1, -40, 1, 0)
+keyBox.Position = UDim2.new(0, 36, 0, 0)
+keyBox.BackgroundTransparency = 1
+keyBox.TextColor3 = Color3.fromRGB(140, 140, 150)
+keyBox.PlaceholderText = KEY_PLACEHOLDER
+keyBox.PlaceholderColor3 = Color3.fromRGB(90, 90, 100)
+keyBox.Text = ""
+keyBox.Font = Enum.Font.Code
+keyBox.TextSize = 13
+keyBox.ClearTextOnFocus = false
+keyBox.BorderSizePixel = 0
+keyBox.Parent = keyField
+
+local authBtn = button(authScreen, {
+	Size = UDim2.new(1, -24, 0, 40),
+	Position = UDim2.new(0, 12, 0, 220),
+	BackgroundColor3 = C.red,
+	Text = "  ▶  AUTHENTICATE",
+	TextSize = 14,
+	Font = Enum.Font.GothamBold,
+})
+corner(authBtn, 6)
+
+local freeKeyBtn = button(authScreen, {
+	Size = UDim2.new(1, -24, 0, 36),
+	Position = UDim2.new(0, 12, 0, 268),
+	BackgroundColor3 = C.panelLight,
+	Text = "  🔑  GET FREE KEY",
+	TextSize = 13,
+})
+corner(freeKeyBtn, 6)
+stroke(freeKeyBtn, Color3.fromRGB(50, 50, 55), 1)
+
+freeKeyBtn.MouseButton1Click:Connect(showBrief)
+
+local keyFieldStroke = keyField:FindFirstChildOfClass("UIStroke")
+local authBtnDefaultText = authBtn.Text
+local authBtnDefaultColor = authBtn.BackgroundColor3
+
+local function denyAuth(message)
+	keyBox.Text = ""
+	keyBox.PlaceholderText = message
+	keyBox.PlaceholderColor3 = C.red
+
+	authBtn.Text = "  ✕  ACCESS DENIED"
+	authBtn.BackgroundColor3 = C.redDark
+
+	if keyFieldStroke then
+		keyFieldStroke.Color = C.red
+	end
+
+	task.delay(2.5, function()
+		if not keyBox.Parent then
+			return
+		end
+		keyBox.PlaceholderText = KEY_PLACEHOLDER
+		keyBox.PlaceholderColor3 = Color3.fromRGB(90, 90, 100)
+		authBtn.Text = authBtnDefaultText
+		authBtn.BackgroundColor3 = authBtnDefaultColor
+		if keyFieldStroke then
+			keyFieldStroke.Color = Color3.fromRGB(45, 45, 52)
+		end
+	end)
+end
+
+authBtn.MouseButton1Click:Connect(function()
+	if keyBox.Text == "" then
+		denyAuth("Enter a key first")
+	else
+		-- Always deny — no valid keys
+		denyAuth("ACCESS DENIED — INVALID KEY")
+	end
 end)
--- Initialize
-RefreshPlayerList()
-UpdateStatus()
--- Success message
-Message("Loaded", "KILASIK's Multi-Target Fling GUI loaded!", 3)
+
+-- Footer auth
+local authFooter = Instance.new("Frame")
+authFooter.Size = UDim2.new(1, -24, 0, 20)
+authFooter.Position = UDim2.new(0, 12, 1, -28)
+authFooter.BackgroundTransparency = 1
+authFooter.Parent = authScreen
+
+label(authFooter, {
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Text = "PHANTOM v1.0",
+	TextSize = 10,
+	TextColor3 = C.dim,
+})
+
+local timeLabel = label(authFooter, {
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Text = "◆ 00:00:00 UTC",
+	TextSize = 10,
+	TextColor3 = C.dim,
+	TextXAlignment = Enum.TextXAlignment.Right,
+})
+
+task.spawn(function()
+	while screen.Parent do
+		timeLabel.Text = "◆ " .. os.date("!%H:%M:%S") .. " UTC"
+		task.wait(1)
+	end
+end)
+
+-- ========== PANTALLA BRIEFING ==========
+local briefBanner = Instance.new("Frame")
+briefBanner.Size = UDim2.new(1, -24, 0, 56)
+briefBanner.Position = UDim2.new(0, 12, 0, 8)
+briefBanner.BackgroundColor3 = C.panel
+briefBanner.BorderSizePixel = 0
+briefBanner.Parent = briefScreen
+corner(briefBanner, 6)
+
+label(briefBanner, {
+	Size = UDim2.new(1, -14, 0, 20),
+	Position = UDim2.new(0, 10, 0, 10),
+	Text = "📡  KEY ACQUISITION BRIEFING",
+	TextSize = 13,
+	Font = Enum.Font.GothamBold,
+})
+
+label(briefBanner, {
+	Size = UDim2.new(1, -14, 0, 16),
+	Position = UDim2.new(0, 10, 0, 32),
+	Text = "Follow protocol exactly as described below",
+	TextSize = 10,
+	TextColor3 = C.dim,
+})
+
+local steps = {
+	{ n = "01", icon = "🖱", text = "Click [ COPY LINK ] to copy the access URL", tag = "HIGH", tagColor = C.red },
+	{ n = "02", icon = "🌐", text = "Open a web browser on your device", tag = "MED", tagColor = C.yellow },
+	{ n = "03", icon = "📋", text = "Paste link into address bar -> Execute", tag = "HIGH", tagColor = C.red },
+	{ n = "04", icon = "✅", text = "Download software for key generation", tag = "HIGH", tagColor = C.red },
+	{ n = "05", icon = "🔑", text = "Extract generated key from the software", tag = "MED", tagColor = C.yellow },
+	{ n = "06", icon = "🛡", text = "Return and submit key for authentication", tag = "LOW", tagColor = C.green },
+}
+
+local stepsContainer = Instance.new("ScrollingFrame")
+stepsContainer.Size = UDim2.new(1, -24, 0, 280)
+stepsContainer.Position = UDim2.new(0, 12, 0, 72)
+stepsContainer.BackgroundTransparency = 1
+stepsContainer.BorderSizePixel = 0
+stepsContainer.ScrollBarThickness = 4
+stepsContainer.ScrollBarImageColor3 = C.redDark
+stepsContainer.CanvasSize = UDim2.new(0, 0, 0, #steps * 46)
+stepsContainer.Parent = briefScreen
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 6)
+listLayout.Parent = stepsContainer
+
+for _, step in ipairs(steps) do
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 40)
+	row.BackgroundColor3 = C.panel
+	row.BorderSizePixel = 0
+	row.Parent = stepsContainer
+	corner(row, 4)
+
+	label(row, {
+		Size = UDim2.new(0, 28, 1, 0),
+		Position = UDim2.new(0, 6, 0, 0),
+		Text = step.n,
+		TextSize = 12,
+		TextColor3 = C.red,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+
+	label(row, {
+		Size = UDim2.new(0, 22, 1, 0),
+		Position = UDim2.new(0, 32, 0, 0),
+		Text = step.icon,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+
+	label(row, {
+		Size = UDim2.new(1, -120, 1, 0),
+		Position = UDim2.new(0, 54, 0, 0),
+		Text = step.text,
+		TextSize = 10,
+		TextWrapped = true,
+		TextColor3 = C.white,
+	})
+
+	local tag = label(row, {
+		Size = UDim2.new(0, 36, 0, 16),
+		Position = UDim2.new(1, -42, 0.5, -8),
+		Text = step.tag,
+		TextSize = 9,
+		TextColor3 = step.tagColor,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	tag.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+	tag.BackgroundTransparency = 0.3
+	corner(tag, 3)
+end
+
+local copyBtn = button(briefScreen, {
+	Size = UDim2.new(1, -24, 0, 42),
+	Position = UDim2.new(0, 12, 0, 362),
+	BackgroundColor3 = C.redDark,
+	Text = "  📋  COPY LINK",
+	TextSize = 14,
+	Font = Enum.Font.GothamBold,
+})
+corner(copyBtn, 6)
+stroke(copyBtn, C.red, 1)
+
+local returnBtn = button(briefScreen, {
+	Size = UDim2.new(1, -24, 0, 32),
+	Position = UDim2.new(0, 12, 0, 412),
+	BackgroundColor3 = C.panel,
+	Text = "←  RETURN TO AUTH SCREEN",
+	TextSize = 11,
+	TextColor3 = C.dim,
+})
+corner(returnBtn, 4)
+
+returnBtn.MouseButton1Click:Connect(showAuth)
+
+copyBtn.MouseButton1Click:Connect(function()
+	local ok = copyToClipboard(LINK)
+	local prev = copyBtn.Text
+	if ok then
+		copyBtn.Text = "  ✓  COPIED!"
+		copyBtn.BackgroundColor3 = C.green
+	else
+		copyBtn.Text = "  !  use an executor"
+		copyBtn.BackgroundColor3 = C.yellow
+	end
+	task.delay(1.5, function()
+		if copyBtn.Parent then
+			copyBtn.Text = "  📋  COPY LINK"
+			copyBtn.BackgroundColor3 = C.redDark
+		end
+	end)
+	print("[PHANTOM] Link:", LINK, ok and "(clipboard)" or "(clipboard unavailable)")
+end)
+
+-- Drag window by header
+local dragging, dragStart, startPos
+header.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = root.Position
+	end
+end)
+
+header.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+header.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		root.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+print("[PHANTOM] Auth UI loaded. COPY LINK ->", LINK)
